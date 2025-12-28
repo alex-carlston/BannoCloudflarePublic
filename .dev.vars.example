@@ -1,0 +1,9 @@
+REDIRECT_URI=http://localhost:8787/callback
+
+# Session encryption secret for KV (required for AES-GCM encryption)
+# Generate with: openssl rand -base64 32
+SESSION_ENC_SECRET=239TEGMr8je68IJLx97Wwfclp1l7HcEO_yUIYfrnLOI
+
+CLIENT_ID=00000000-3c54-43dc-b8cd-000000000000
+CLIENT_SECRET=00000000-4041-4805-90d4-000000000000
+ENV_URI=https://digital.garden-fi.com

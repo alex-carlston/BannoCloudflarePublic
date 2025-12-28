@@ -1,0 +1,74 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "banno-hono-plugin",
+  "main": "src/index.tsx",
+  "compatibility_date": "2025-12-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": "public"
+  },
+  "vars": {
+    // OAuth 2.0 Credentials (from Banno Admin Portal)
+    "CLIENT_ID": "${CLIENT_ID}",
+    "ENV_URI": "${ENV_URI}",
+    // After login, Banno redirects back to this URL (must match OAuth settings in Admin Portal)
+    "REDIRECT_URI": "${REDIRECT_URI}",
+    // Session encryption secret for local development
+    "SESSION_ENC_SECRET": "${SESSION_ENC_SECRET}",
+    "ENVIRONMENT": "${ENVIRONMENT}"
+    // CLIENT_SECRET is loaded from .dev.vars for local development
+    // For production, set via: pnpm wrangler secret put CLIENT_SECRET
+  },
+
+  // KV Namespace for session storage
+  // For local development, uses preview_id
+  // For production deployment, configure under env.production
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS_KV",
+      "preview_id": "local-banno-sessions"
+    }
+  ],
+
+  // Environment-specific configuration
+  "env": {
+    "production": {
+      "vars": {
+        "REDIRECT_URI": "${REDIRECT_URI}",
+        "ENVIRONMENT": "${ENVIRONMENT}",
+        "CLIENT_ID": "${CLIENT_ID}",
+        "ENV_URI": "${ENV_URI}",
+        "SESSION_ENC_SECRET": "${SESSION_ENC_SECRET}"
+      },
+      "kv_namespaces": [
+        {
+          "binding": "SESSIONS_KV",
+          "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  // Set to your production KV namespace ID
+        }
+      ]
+    }
+  },
+
+  // Set these secrets via: pnpm wrangler secret put SECRET_NAME
+  // pnpm wrangler secret put CLIENT_SECRET (OAuth client secret from Banno Admin Portal)
+  "secrets": ["CLIENT_SECRET"],
+
+  // Enable logging for debugging and monitoring
+  "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+  }
+}

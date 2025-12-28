@@ -1,0 +1,32 @@
+# prod
+dist/
+
+# dev
+.vscode/*
+!.vscode/launch.json
+!.vscode/*.code-snippets
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/shelf
+
+# deps
+node_modules/
+.wrangler
+
+# env
+.env
+.env.production
+.dev.vars
+wrangler.jsonc
+
+# LLM development guidelines (not for git)
+AGENTS.MD
+
+# logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# misc
+.DS_Store
