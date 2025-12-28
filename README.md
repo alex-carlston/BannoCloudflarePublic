@@ -22,7 +22,7 @@ A modular, Hono-based application for Banno OAuth integration, deployed on Cloud
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/alex-carlston/BannoCloudflarePublic
    cd BannoCloudflarePublic
    ```
 
@@ -152,9 +152,14 @@ pnpm wrangler secret put CLIENT_SECRET
 
 ### Session Storage (KV)
 
-Keys are formatted as: `session:{sessionId}`
+**User-Based Session Management**: One session per user with automatic cleanup.
 
-Encrypted with AES-GCM using `SESSION_ENC_SECRET` from environment.
+**Keys are formatted as:**
+- `session:{sessionId}` - Encrypted session data (30-day TTL)
+- `user_session:{userId}` - User-to-session mapping (30-day TTL)
+- `ratelimit:auth:{clientIP}` - Rate limiting (60-second TTL)
+
+All data encrypted with AES-GCM using `SESSION_ENC_SECRET`.
 
 ```typescript
 {
@@ -243,9 +248,9 @@ This project has been **fully deployed** as a Cloudflare Worker with the followi
 - **Secrets**: CLIENT_SECRET configured for production environment
 - **Environment Variables**: All production variables hardcoded in `wrangler.jsonc`
 - **Logging**: Cloudflare observability logs enabled for debugging and monitoring
-- **Current Status**: Deployed and accessible, OAuth flow partially working (CLIENT_SECRET verification needed)
+- **Current Status**: ✅ **Fully deployed and operational** - OAuth flow working with proper session management
 
-**Current Status**: The Worker has been deployed to `https://banno-hono-plugin-production.a-carlston2.workers.dev`, but production environment variables still need to be configured for full functionality.
+**Current Status**: ✅ **Fully deployed and operational** at `https://banno-hono-plugin-production.a-carlston2.workers.dev` with complete OAuth flow and user-based session management.
 
 ### Step-by-Step Deployment Guide
 
@@ -278,7 +283,7 @@ This project has been **fully deployed** as a Cloudflare Worker with the followi
    - **KV Storage**: Configured for session management
    - **Logging**: Enabled for debugging and monitoring
 
-#### ❌ Remaining Steps (not yet completed)
+#### ❌ **Banno Admin Portal Configuration Required**
 
 #### 6. Update Banno OAuth Settings
 
@@ -311,7 +316,7 @@ This project has been **fully deployed** as a Cloudflare Worker with the followi
 
 After updating Banno settings and verifying CLIENT_SECRET:
 
-1. Visit:  `https://DEPLOYEDWORKERURL'/callback/plugin`
+1. Visit: `https://banno-hono-plugin-production.a-carlston2.workers.dev/callback/plugin`
 2. Click "Login with Banno"
 3. Complete authentication
 4. Verify successful login and plugin rendering
