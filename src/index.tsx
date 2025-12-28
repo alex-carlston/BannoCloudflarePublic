@@ -32,9 +32,12 @@ app.use('*', bodyLimit({
 // CORS
 app.use('*', cors({
   origin: (origin: string) => {
-    // Only allow HTTPS origins for security
-    if (origin?.startsWith('https://') &&
-        (origin.includes('localhost') || origin.endsWith('.banno.com'))) {
+    // Allow HTTPS origins and localhost for development
+    if (origin?.startsWith('https://') && origin.endsWith('.banno.com')) {
+      return origin
+    }
+    // Allow localhost for development (both HTTP and HTTPS)
+    if (origin?.includes('localhost')) {
       return origin
     }
     return null // Reject invalid origins
@@ -86,9 +89,9 @@ app.use('*', async (c, next) => {
 // CSRF Protection (exclude OAuth routes which use state parameter)
 app.use((c) => !c.req.path.startsWith('/auth') && !c.req.path.startsWith('/callback'), csrf({
   origin: (origin) => {
-    // Allow requests from the same origin or Banno domains
+    // Allow requests from the same origin, Banno domains, or localhost
     const requestOrigin = new URL(c.req.url).origin
-    return !origin || origin === requestOrigin || origin.includes('.banno.com')
+    return !origin || origin === requestOrigin || origin.includes('.banno.com') || origin.includes('localhost')
   }
 }))
 
