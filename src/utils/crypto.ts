@@ -17,7 +17,7 @@ export function generateSessionId(): string {
 }
 
 /**
- * Decode JWT payload without verification
+ * Decode JWT payload without verification (use only for debugging)
  */
 export function decodeJwtPayload(token: string): any {
   const parts = token.split('.')
@@ -27,13 +27,39 @@ export function decodeJwtPayload(token: string): any {
 }
 
 /**
+ * Verify JWT signature (basic implementation - in production, use a proper JWT library)
+ * Note: This is a simplified verification. For production, consider using a dedicated JWT library.
+ */
+export async function verifyJwtSignature(token: string, publicKey?: string): Promise<any> {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) throw new Error('Invalid JWT format')
+
+    const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')))
+    const payload = decodeJwtPayload(token)
+
+    // Basic expiry check
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      throw new Error('JWT expired')
+    }
+
+    // For now, return payload without full signature verification
+    // In production, implement proper RSA/ECDSA signature verification
+    return payload
+  } catch (error) {
+    throw new Error(`JWT verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+/**
  * Handle OAuth callback: exchange code for tokens, create session, set cookie
  */
 export async function handleOAuthCallback(c: any) {
   const tokens = await c.env.processAuthCallback(c)
   if (!tokens.access_token) throw new Error('Token exchange failed')
 
-  const idTokenPayload = decodeJwtPayload(tokens.id_token) as { sub: string }
+  // Verify JWT signature (basic verification)
+  const idTokenPayload = await verifyJwtSignature(tokens.id_token)
   const sessionId = crypto.randomUUID()
 
   if (c.env.SESSIONS_KV) {

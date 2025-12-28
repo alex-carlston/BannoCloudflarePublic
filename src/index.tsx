@@ -87,13 +87,23 @@ app.use('*', async (c, next) => {
 })
 
 // CSRF Protection (exclude OAuth routes which use state parameter)
-app.use((c) => !c.req.path.startsWith('/auth') && !c.req.path.startsWith('/callback'), csrf({
-  origin: (origin) => {
-    // Allow requests from the same origin, Banno domains, or localhost
-    const requestOrigin = new URL(c.req.url).origin
-    return !origin || origin === requestOrigin || origin.includes('.banno.com') || origin.includes('localhost')
+app.use('*', async (c, next) => {
+  // Skip CSRF for OAuth routes (they use state parameter instead)
+  if (c.req.path.startsWith('/auth') || c.req.path.startsWith('/callback')) {
+    return next()
   }
-}))
+
+  // Apply CSRF protection to other routes
+  const csrfMiddleware = csrf({
+    origin: (origin) => {
+      // Allow requests from the same origin, Banno domains, or localhost
+      const requestOrigin = new URL(c.req.url).origin
+      return !origin || origin === requestOrigin || origin.includes('.banno.com') || origin.includes('localhost')
+    }
+  })
+
+  return csrfMiddleware(c, next)
+})
 
 // JSX Renderer
 app.use('*', jsxRenderer(({ children }) => (
