@@ -21,6 +21,15 @@ export function createAuthRoutes(): Hono<{ Bindings: Bindings; Variables: Variab
     
     if (sessionId && c.env.SESSIONS_KV) {
       const sessionService = new SessionService(c.env.SESSIONS_KV, c.env.SESSION_ENC_SECRET!, c.env)
+      
+      // Get session data to find user ID for cleanup
+      const session = await sessionService.getSession(sessionId)
+      if (session) {
+        // Clean up user-to-session mapping
+        await sessionService.deleteUserSession(session.userId)
+      }
+      
+      // Delete the session
       await sessionService.deleteSession(sessionId)
     }
     

@@ -113,7 +113,8 @@ app.use('*', jsxRenderer(({ children }) => (
 // CSP
 app.use('*', async (c, next) => {
   await next()
-  const cspPolicy = `frame-ancestors 'self' https://digital.garden-fi.com; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' https:; connect-src 'self' https://api.banno.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; form-action 'self' https://digital.garden-fi.com; frame-src 'self' https://digital.garden-fi.com; base-uri 'self'; default-src 'self'`
+  const envUri = c.env.ENV_URI || 'https://digital.garden-fi.com'
+  const cspPolicy = `frame-ancestors 'self' ${envUri}; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' https:; connect-src 'self' https://api.banno.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; form-action 'self' ${envUri}; frame-src 'self' ${envUri}; base-uri 'self'; default-src 'self'`
   c.res.headers.set('Content-Security-Policy', cspPolicy)
 })
 

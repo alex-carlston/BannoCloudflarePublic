@@ -60,27 +60,45 @@ export async function handleOAuthCallback(c: any) {
 
   // Verify JWT signature (basic verification)
   const idTokenPayload = await verifyJwtSignature(tokens.id_token)
-  const sessionId = crypto.randomUUID()
+  const userId = idTokenPayload.sub
 
   if (c.env.SESSIONS_KV) {
     const { SessionService } = await import('../services/session.service')
     const sessionService = new SessionService(c.env.SESSIONS_KV, c.env.SESSION_ENC_SECRET!, c.env)
-    await sessionService.createSession(sessionId, {
-      userId: idTokenPayload.sub,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt: Date.now() + (tokens.expires_in * 1000)
+
+    // Check if user already has an active session
+    const existingSessionId = await sessionService.getUserSessionId(userId)
+
+    let sessionId: string
+    if (existingSessionId) {
+      // Update existing session with new tokens
+      sessionId = existingSessionId
+      await sessionService.updateSession(sessionId, {
+        userId: userId,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: Date.now() + (tokens.expires_in * 1000)
+      })
+    } else {
+      // Create new session for user
+      sessionId = crypto.randomUUID()
+      await sessionService.createUserSession(sessionId, userId, {
+        userId: userId,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: Date.now() + (tokens.expires_in * 1000)
+      })
+    }
+
+    const { setSignedCookie } = await import('hono/cookie')
+    await setSignedCookie(c, '__Secure-session_id', sessionId, c.env.SESSION_ENC_SECRET, {
+      httpOnly: true,
+      secure: true,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'None'
     })
+
+    return sessionId
   }
-
-  const { setSignedCookie } = await import('hono/cookie')
-  await setSignedCookie(c, '__Secure-session_id', sessionId, c.env.SESSION_ENC_SECRET, {
-    httpOnly: true,
-    secure: true,
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30,
-    sameSite: 'None'
-  })
-
-  return sessionId
 }

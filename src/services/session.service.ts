@@ -24,15 +24,38 @@ export class SessionService {
 
   /**
    * Creates a new session in KV with encrypted tokens and 30-day TTL
+   * Also creates a user-to-session mapping
+   * Cleans up any existing session for the user
    */
-  async createSession(sessionId: string, data: SessionData): Promise<void> {
+  async createUserSession(sessionId: string, userId: string, data: SessionData): Promise<void> {
     const expiresAt = Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30)
+
+    // Clean up any existing session for this user
+    const existingSessionId = await this.getUserSessionId(userId)
+    if (existingSessionId && existingSessionId !== sessionId) {
+      await this.deleteSession(existingSessionId)
+    }
+
     await this.kvService.put(`session:${sessionId}`, {
       userId: data.userId,
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
       expiresAt: Math.floor(data.expiresAt / 1000)
     }, expiresAt)
+
+    // Create user-to-session mapping (also with 30-day TTL)
+    await this.kvService.put(`user_session:${userId}`, sessionId, expiresAt)
+  }
+
+  /**
+   * Gets the active session ID for a user
+   */
+  async getUserSessionId(userId: string): Promise<string | null> {
+    try {
+      return await this.kvService.get<string>(`user_session:${userId}`)
+    } catch (error) {
+      return null
+    }
   }
 
   /**
@@ -91,6 +114,17 @@ export class SessionService {
   async deleteSession(sessionId: string): Promise<void> {
     try {
       await this.kvService.delete(`session:${sessionId}`)
+    } catch (error) {
+      // Silently fail on delete errors
+    }
+  }
+
+  /**
+   * Deletes the user-to-session mapping
+   */
+  async deleteUserSession(userId: string): Promise<void> {
+    try {
+      await this.kvService.delete(`user_session:${userId}`)
     } catch (error) {
       // Silently fail on delete errors
     }
