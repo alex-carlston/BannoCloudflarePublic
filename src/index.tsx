@@ -32,17 +32,65 @@ app.use('*', bodyLimit({
 // CORS
 app.use('*', cors({
   origin: (origin: string) => {
-    if (origin.includes('localhost') || origin.endsWith('.banno.com')) {
+    // Only allow HTTPS origins for security
+    if (origin?.startsWith('https://') &&
+        (origin.includes('localhost') || origin.endsWith('.banno.com'))) {
       return origin
     }
-    return 'http://localhost:3000'
+    return null // Reject invalid origins
   },
   allowMethods: ['GET', 'POST', 'OPTIONS'],
   credentials: true,
 }))
 
-// CSRF
-app.use('*', csrf())
+// Rate Limiting Middleware
+app.use('/auth/*', async (c, next) => {
+  // Simple IP-based rate limiting using KV
+  const clientIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown'
+  const key = `ratelimit:auth:${clientIP}`
+
+  if (c.env.SESSIONS_KV) {
+    try {
+      const current = await c.env.SESSIONS_KV.get(key)
+      const count = current ? parseInt(current) : 0
+
+      if (count >= 10) { // 10 requests per minute
+        return c.text('Rate limit exceeded. Please try again later.', 429, {
+          'Retry-After': '60'
+        })
+      }
+
+      // Increment counter with 60 second expiry
+      await c.env.SESSIONS_KV.put(key, (count + 1).toString(), { expirationTtl: 60 })
+    } catch (error) {
+      // Continue if rate limiting fails (fail open)
+      console.warn('Rate limiting check failed:', error)
+    }
+  }
+
+  await next()
+})
+
+// Input Validation Middleware
+app.use('*', async (c, next) => {
+  // Sanitize query parameters - basic XSS prevention
+  const url = new URL(c.req.url)
+  for (const [key, value] of url.searchParams) {
+    if (value.includes('<script') || value.includes('javascript:') || value.includes('data:text/html')) {
+      return c.text('Invalid request parameters', 400)
+    }
+  }
+  await next()
+})
+
+// CSRF Protection (exclude OAuth routes which use state parameter)
+app.use((c) => !c.req.path.startsWith('/auth') && !c.req.path.startsWith('/callback'), csrf({
+  origin: (origin) => {
+    // Allow requests from the same origin or Banno domains
+    const requestOrigin = new URL(c.req.url).origin
+    return !origin || origin === requestOrigin || origin.includes('.banno.com')
+  }
+}))
 
 // JSX Renderer
 app.use('*', jsxRenderer(({ children }) => (
@@ -52,7 +100,7 @@ app.use('*', jsxRenderer(({ children }) => (
 // CSP
 app.use('*', async (c, next) => {
   await next()
-  const cspPolicy = `frame-ancestors 'self' ${c.env.ENV_URI} http://localhost:3000; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://api.banno.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com; form-action 'self' ${c.env.ENV_URI}; frame-src 'self' ${c.env.ENV_URI}; base-uri 'self'; default-src 'self'`
+  const cspPolicy = `frame-ancestors 'self' https://digital.garden-fi.com; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com; img-src 'self' https:; connect-src 'self' https://api.banno.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; form-action 'self' https://digital.garden-fi.com; frame-src 'self' https://digital.garden-fi.com; base-uri 'self'; default-src 'self'`
   c.res.headers.set('Content-Security-Policy', cspPolicy)
 })
 
@@ -69,9 +117,17 @@ app.notFound((c) => {
   return c.text('Not Found', 404)
 })
 
-// Error handler
+// Error handler - Don't leak sensitive information
 app.onError((err, c) => {
-  console.error('Error:', err)
+  console.error('Application error:', {
+    message: err.message,
+    stack: err.stack,
+    url: c.req.url,
+    method: c.req.method,
+    // Don't log sensitive headers or body
+  })
+
+  // Return generic error message
   return c.text('Internal Server Error', 500)
 })
 
