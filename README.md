@@ -3,7 +3,6 @@
 A modular, Hono-based application for Banno OAuth integration, deployed on Cloudflare Workers. Features a clean separation of concerns with dedicated services for authentication, sessions, and plugin rendering.
 
 ## Features
-
 - OAuth 2.0 authentication with Banno using PKCE
 - Session management with encrypted Cloudflare KV storage
 - Modular architecture with separated routes, services, and utilities
@@ -13,7 +12,7 @@ A modular, Hono-based application for Banno OAuth integration, deployed on Cloud
 - CSRF protection
 
 ## Prerequisites
-
+- JHA Dev Account https://jackhenry.dev/
 - Node.js (v18 or later)
 - pnpm
 - Cloudflare account with Wrangler CLI installed
