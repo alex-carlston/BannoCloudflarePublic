@@ -2,6 +2,9 @@
 
 A modular, Hono-based application for Banno OAuth integration, deployed on Cloudflare Workers. Features a clean separation of concerns with dedicated services for authentication, sessions, and plugin rendering.
 
+Sample plugin view.
+<img width="578" height="599" alt="image" src="https://github.com/user-attachments/assets/921481b6-8bf4-4167-b555-d9daeff9d39a" />
+
 ## Features
 - OAuth 2.0 authentication with Banno using PKCE
 - Session management with encrypted Cloudflare KV storage
