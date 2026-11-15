@@ -53,7 +53,7 @@
 
   // Set these secrets via: pnpm wrangler secret put SECRET_NAME
   // pnpm wrangler secret put CLIENT_SECRET (OAuth client secret from Banno Admin Portal)
-  "secrets": ["CLIENT_SECRET"],
+  "secrets": { "required": ["CLIENT_SECRET"] },
 
   // Enable logging for debugging and monitoring
   "observability": {
