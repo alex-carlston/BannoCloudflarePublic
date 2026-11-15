@@ -66,7 +66,6 @@ export async function renderPlugin(c: Context<{ Bindings: Bindings; Variables: V
       
       if (userRes.ok) {
         userInfo = await userRes.json()
-        console.log('User info received:', JSON.stringify(userInfo))
       } else {
         const errorText = await userRes.text()
         console.error('User API error:', userRes.status, errorText)
@@ -93,7 +92,6 @@ export async function renderPlugin(c: Context<{ Bindings: Bindings; Variables: V
       
       if (accountsRes.ok) {
         const data = await accountsRes.json() as any
-        console.log('Accounts data received:', JSON.stringify(data))
         accounts = Array.isArray(data) ? data : (data.accounts || [])
       } else {
         const errorText = await accountsRes.text()

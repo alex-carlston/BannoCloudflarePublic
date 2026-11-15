@@ -2,8 +2,22 @@ import { Context } from 'hono'
 import { setSignedCookie } from 'hono/cookie'
 import { processAuthCallback } from '../services/auth.service'
 import { SessionService } from '../services/session.service'
+import KVService from '../services/kv.service'
 import { decodeJwtPayload } from './crypto'
 import type { CloudflareBindings, Variables } from '../types'
+
+// Keys the /claims inspector never stores or shows: PII and full account/card numbers.
+// Matches claim URIs too (e.g. .../claim/phone_numbers). Add keys here as new ones turn up.
+const SENSITIVE_KEY = /birth|dob|address|street|postal|zip|phone|tax|ssn|social|cvv|^numbers?$|account_?number|card_?number|full_?number|micr|expiration|^pan$|unmasked/i
+
+export function redactSensitive(value: any): any {
+  if (Array.isArray(value)) return value.map(redactSensitive)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) =>
+      [k, v != null && SENSITIVE_KEY.test(k) ? '[redacted]' : redactSensitive(v)]))
+  }
+  return value
+}
 
 export async function handleOAuthCallback(c: Context<{ Bindings: CloudflareBindings; Variables: Variables }>) {
   const tokens = await processAuthCallback(c)
@@ -40,6 +54,10 @@ export async function handleOAuthCallback(c: Context<{ Bindings: CloudflareBindi
       expiresAt: Date.now() + (tokens.expires_in * 1000)
     })
   }
+
+  // Keep the decoded id_token claims (accounts, cards, user...) for the /claims inspector
+  const kvService = new KVService(c.env.SESSIONS_KV, c.env.SESSION_ENC_SECRET)
+  await kvService.put(`id_token:${userId}`, redactSensitive(idTokenPayload), Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30)
 
   await setSignedCookie(c, '__Secure-session_id', sessionId, c.env.SESSION_ENC_SECRET, {
     httpOnly: true,
