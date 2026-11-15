@@ -17,16 +17,29 @@ const SCOPES = [
   'https://api.banno.com/consumer/auth/accounts.readonly',
   'https://api.banno.com/consumer/auth/user.readonly',
   'https://api.banno.com/consumer/auth/user.profile.readonly',
-  'https://api.banno.com/consumer/claim/devices.readonly',
-  'https://api.banno.com/consumer/claim/netteller_id.readonly',
-  'https://api.banno.com/consumer/claim/phone_numbers.readonly',
-  'https://api.banno.com/consumer/claim/user_type.readonly',
   'https://api.banno.com/consumer/auth/documents.readonly',
   'https://api.banno.com/consumer/auth/transactions.detail.readonly',
-  'https://api.banno.com/consumer/claim/customer_identifier.readonly',
-  'https://api.banno.com/consumer/claim/loans.readonly',
-  'https://api.banno.com/consumer/claim/shares.readonly'
+  'email'
 ]
+
+/**
+ * Claims are requested via the OIDC `claims` param, not `scope`.
+ * Restricted claims (accounts, cards, customer_identifier, loans, shares) are silently
+ * omitted unless enabled for this app under External Applications in Banno People.
+ * Full list: {ENV_URI}/a/consumer/api/v0/oidc/.well-known/openid-configuration
+ * Deliberately NOT requested (PII): birthdate, address, phone_number, phone_numbers, tax_id, devices.
+ * external_tracking_records is filled by the BANNO.GETTRACKING.V1.POW PowerOn (Symitar tracking records).
+ */
+const CLAIM_NAMES = [
+  'name', 'given_name', 'family_name', 'middle_name', 'preferred_username', 'email',
+  ...[
+    'accounts', 'masked_accounts', 'cards',
+    'external_tracking_records', 'tracking_info', 'configuration_values',
+    'institution_id', 'institution_details', 'fi_routing_number', 'user_type',
+    'customer_identifier', 'netteller_id', 'loans', 'shares'
+  ].map(n => `https://api.banno.com/consumer/claim/${n}`)
+]
+const CLAIMS = Object.fromEntries(CLAIM_NAMES.map(n => [n, null]))
 
 export interface AuthInitResult {
   url: string;
@@ -82,6 +95,7 @@ export async function generateAuthUrl(env: Bindings): Promise<AuthInitResult> {
     client_id: env.CLIENT_ID,
     response_type: 'code',
     scope: SCOPES.join(' '),
+    claims: JSON.stringify({ id_token: CLAIMS, userinfo: CLAIMS }),
     redirect_uri: env.REDIRECT_URI,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
